@@ -33,5 +33,17 @@ module.exports = (sequelize, DataTypes) => {
     sequelize,
     modelName: 'User',
   });
+  User.beforeCreate(async(user) => {
+    // Hash the password before saving to the database
+    const bcrypt = require('bcrypt');
+    const saltRounds = 10;
+    try {
+      const hashedPassword = await bcrypt.hash(user.password, saltRounds);
+      user.password = hashedPassword;
+    } catch (error) {
+      console.error('Error hashing password:', error);
+      throw new Error('Error hashing password');
+    }
+  });
   return User;
 };

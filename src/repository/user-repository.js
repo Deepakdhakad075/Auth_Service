@@ -24,7 +24,9 @@ class UserRepository {
 
     async get(id){
         try {
-            const user = await User.findByPk(id);
+            const user = await User.findByPk(id,{
+                attributes : ['email','id']
+            });
             if (!user) {
                 throw new Error('User not found');
             }
@@ -33,6 +35,22 @@ class UserRepository {
            console.log('Error in fetching user:', error);
            throw error;
         }
+    }
+    async getByEmail(email){
+
+    try {
+        console.log('Fetching user by email:', email);
+         const user  = await User.findOne({
+            where: { email: email }
+         })
+         return user;
+    } catch (error) {
+        console.log('Error in fetching user by email:', error);
+        throw error;
+    }
+
+
+
     }
     async getAll(){
         try {

@@ -15,6 +15,9 @@ class UserService {
             
           } catch (error) {
             console.log('Error in service layer for creating user:', error);
+            if(error.name === 'ValidationError') {
+                throw error; // Propagate validation errors
+            }
             throw error;
           }
     }
@@ -35,6 +38,10 @@ class UserService {
             return user;
         } catch (error) {
             console.log('Error in service layer for fetching user:', error);
+            if (error.name === 'AttributeNotFound') {
+                console.log(error.statusCode, error.message,"service layer error");
+                throw error; // Propagate attribute not found errors
+            }
             throw error;
         }
     }
@@ -60,10 +67,13 @@ class UserService {
         throw new Error('Error in creating token');
       }
     }
-     
+   
+  
+
     verifyToken(token) {
         try {
             const decoded = jwt.verify(token, JWT_SECRET);
+            console.log(decoded,"decoded dataaaa");
             return decoded;
         } catch (error) {
             console.error('Error in verifying token:', error);
@@ -85,7 +95,24 @@ class UserService {
             throw new Error('password not match');
          }
     }
+    
+    async isAuthenticated(token) {
+        try {
+            const response  = this.verifyToken(token);
+            
+            const user = await this.userRepository.get(response.id)
+            
+            if (!user) {
+                throw new Error('User not found');
+            }
+            return user;
+        } catch (error) {
+            console.error('Error in isAuthenticated:', error);
+            throw new Error('Authentication failed');
 
+
+        }
+    }
 
     async signIn(email, password) {
         try {
@@ -100,15 +127,33 @@ class UserService {
             }
             // Create token
             const token = this.createToken({ id: user.id, email: user.email });
+          
+          
+    const cleanUser = user.toJSON();  // Plain object
+    delete cleanUser.password;        // Remove sensitive data
+    cleanUser.token = token;
 
-            user.token = token; // Attach token to user object
-            return  user ;
+    return cleanUser;
         } catch (error) {
+            if (error.name === 'AttributeNotFound') {
+              throw error;
+
+            }
             console.error('Error in signIn:', error);
             throw error;
         }
     }
    
+    isAdmin(userID){
+        try {
+           return  this.userRepository.isAdmin(userID);
+
+        } catch (error) {
+             console.error('Error in check Admin in service layer:', error);
+            throw error;
+            
+        }
+    }
 
 
 }

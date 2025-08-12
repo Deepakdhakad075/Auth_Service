@@ -1,4 +1,4 @@
-const user = require("../models/user");
+
 const { UserService } = require("../services/index");
 const userService = new UserService();
 const createUser = async (req, res) => {
@@ -14,9 +14,11 @@ const createUser = async (req, res) => {
     });
   } catch (error) {
     console.error("Error in creating user:", error);
-    return res.status(500).json({
+    return res.status(error.statusCode).json({
       success: false,
-      message: "Internal Server Error",
+      message: error.explanation || "Internal Server Error",
+      error: error.message || "An unexpected error occurred",
+      
     });
   }
 };
@@ -30,14 +32,48 @@ const getUser = async(req,res) =>{
             message:"User fetched successfully"
         });
        
-    }catch(e){
+    }catch(error){
 
-        console.error("Error in fetching user:", e);
-        return res.status(500).json({
-            success: false,
-            message: "Internal Server Error",
-        });
+        console.error("Error in fetching user:", error);
+        
+            return res.status(error.statusCode).json({
+                success: false,
+                message: error.message || "User not found",
+                error: error.explanation || "The requested user does not exist",
+            });
     }
+}
+
+
+const isAuthenticated = async(req, res) => {
+      try{
+       const token = req.headers['x-access-token'];
+
+        if (!token) {
+          return res.status(401).json({
+            success: false,
+            message: "No token provided",
+          });
+        }
+        const response = await userService.isAuthenticated(token);
+        if (!response) {
+          return res.status(401).json({
+            success: false,
+            message: "Invalid token",
+          });
+        }
+        return res.status(200).json({
+          success: true,
+          data: response,
+          message: "User is authenticated",
+        });
+      } catch (error) {
+        console.error("Error in authentication:", error);
+        return res.status(500).json({
+          success: false,
+          message: "Internal Server Error",
+        });
+      }
 }
 const signIn = async(req,res)=>{
   try{
@@ -55,16 +91,41 @@ const signIn = async(req,res)=>{
           data:response,
           message:"User signed in successfully"
       });
-  }catch(e){
-    console.error("Error in signing in user:", e);
+  }catch(error){
+    console.error("Error in signing in user:", error);
+
+    return res.status(error.statusCode).json({
+      success: false,
+      message: error.message,
+      error: error.explanation,
+    });
+  }
+}
+const isAdmin = async (req,res)=>{
+  try{
+    const response = await userService.isAdmin(req.body.id);
+    if (response) {
+      return res.status(200).json({
+        success: true,
+        message: "User is an admin",
+        data: response,
+      });
+    } else {
+      return res.status(403).json({
+        success: false,
+        message: "User is not an admin",
+      });
+    }
+  }
+  catch(error){
+    console.error("Error in checking admin status:", error);
     return res.status(500).json({
       success: false,
       message: "Internal Server Error",
-      error: e.message,
     });
   }
 }
 module.exports = {
-  UserController: { createUser,getUser,signIn},
+  UserController: { createUser,getUser,signIn,isAuthenticated,isAdmin},
   // You can add more controller methods here as needed
 };
